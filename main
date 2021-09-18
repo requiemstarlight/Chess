@@ -19,14 +19,14 @@ def main(mins):
 
     game = Game(WIN, mins)
 
-    win_text_timer = 7000
+    win_text_timer = 20000
 
     while run:
         pygame.display.update()
 
         # create code to handle a three second countdown to display winner text
 
-        if game.check_mated or game.out_of_time:
+        if game.check_mated_king_location or game.out_of_time:
             if win_text_timer <= 0:
                 run = False
 
@@ -37,9 +37,8 @@ def main(mins):
 
             if event.type == pygame.QUIT:
                 run = False
-                # reset_game()
 
-            if event.type == pygame.MOUSEBUTTONDOWN and not game.check_mated:
+            if event.type == pygame.MOUSEBUTTONDOWN and not game.check_mated_king_location:
                 row, col = game.get_row_col_from_mouse_position()
 
                 if row in range(ROWS - 1) and col in range(COLUMNS):
