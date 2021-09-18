@@ -1,0 +1,801 @@
+from board import Board
+from piece import *
+from constants import *
+import pygame
+from copy import deepcopy
+
+
+class Game:
+    def __init__(self, window, mins):
+        self.window = window
+        self.turn = 'White'
+
+        # instantiate the Board class to handle piece locations throughout the game
+        self.gameboard = Board(self.window)
+
+        self.piece_selected = None
+        self.checked_king = None
+
+        self.out_of_time = None
+        self.check_mated_king_location = None
+        self.check_mated_king_colour = None
+
+        # variable to allow the program to run for one loop after checkmate, to colour the checkmated square
+        self.check_mate_registered = False
+
+        # create the Piece objects and append in self.pieces
+        self.pieces = []
+        self.create_piece_objects()
+
+        # create variable to manage the players' clocks
+        self.timer_countdown = 275
+        self.white_timer_mins = mins
+        self.black_timer_mins = mins
+        self.white_timer_secs = 0
+        self.black_timer_secs = 0
+
+    def create_piece_objects(self):
+        for i in range(ROWS - 1):
+            for j in range(COLUMNS):
+
+                if self.gameboard.board[i][j] == 7:
+                    piece = Pawn(i, j, 'White', self.window)
+                    self.pieces.append(piece)
+
+                elif self.gameboard.board[i][j] == 8:
+                    piece = Rook(i, j, 'White', self.window)
+                    self.pieces.append(piece)
+
+                elif self.gameboard.board[i][j] == 9:
+                    piece = Bishop(i, j, 'White', self.window)
+                    self.pieces.append(piece)
+
+                elif self.gameboard.board[i][j] == 10:
+                    piece = Knight(i, j, 'White', self.window)
+                    self.pieces.append(piece)
+
+                elif self.gameboard.board[i][j] == 11:
+                    piece = Queen(i, j, 'White', self.window)
+                    self.pieces.append(piece)
+
+                elif self.gameboard.board[i][j] == 12:
+                    piece = King(i, j, 'White', self.window)
+                    self.pieces.append(piece)
+
+                elif self.gameboard.board[i][j] == 1:
+                    piece = Pawn(i, j, 'Black', self.window)
+                    self.pieces.append(piece)
+
+                elif self.gameboard.board[i][j] == 2:
+                    piece = Rook(i, j, 'Black', self.window)
+                    self.pieces.append(piece)
+
+                elif self.gameboard.board[i][j] == 3:
+                    piece = Bishop(i, j, 'Black', self.window)
+                    self.pieces.append(piece)
+
+                elif self.gameboard.board[i][j] == 4:
+                    piece = Knight(i, j, 'Black', self.window)
+                    self.pieces.append(piece)
+
+                elif self.gameboard.board[i][j] == 5:
+                    piece = Queen(i, j, 'Black', self.window)
+                    self.pieces.append(piece)
+
+                elif self.gameboard.board[i][j] == 6:
+                    piece = King(i, j, 'Black', self.window)
+                    self.pieces.append(piece)
+
+    def display_turn(self):
+        # this method will display which player's turn it is and how much time each one has left
+        # it will update in line with the 'FPS' clock
+
+        if self.white_timer_secs == 0:
+            white_time_text = TIMER_FONT.render(f"{self.white_timer_mins} : {self.white_timer_secs}0", True, BLACK)
+            self.window.blit(white_time_text, (40, HEIGHT - SQUARE_SIZE / 2 - white_time_text.get_height() / 2))
+
+        elif 0 < self.white_timer_secs <= 9:
+            white_time_text = TIMER_FONT.render(f"{self.white_timer_mins} : 0{self.white_timer_secs}", True, BLACK)
+            self.window.blit(white_time_text, (40, HEIGHT - SQUARE_SIZE / 2 - white_time_text.get_height() / 2))
+
+        elif self.white_timer_secs >= 10:
+            white_time_text = TIMER_FONT.render(f"{self.white_timer_mins} : {self.white_timer_secs}", True, BLACK)
+            self.window.blit(white_time_text, (40, HEIGHT - SQUARE_SIZE / 2 - white_time_text.get_height() / 2))
+
+        if self.black_timer_secs == 0:
+            black_time_text = TIMER_FONT.render(f"{self.black_timer_mins} : {self.black_timer_secs}0", True, BLACK)
+            self.window.blit(black_time_text, (WIDTH - 40 - black_time_text.get_width(), HEIGHT - SQUARE_SIZE / 2
+                                               - black_time_text.get_height() / 2))
+
+        elif 0 < self.black_timer_secs <= 9:
+            black_time_text = TIMER_FONT.render(f"{self.black_timer_mins} : 0{self.black_timer_secs}", True, BLACK)
+            self.window.blit(black_time_text, (WIDTH - 40 - black_time_text.get_width(), HEIGHT - SQUARE_SIZE / 2
+                                               - black_time_text.get_height() / 2))
+
+        elif self.black_timer_secs >= 10:
+            black_time_text = TIMER_FONT.render(f"{self.black_timer_mins} : {self.black_timer_secs}", True, BLACK)
+            self.window.blit(black_time_text, (WIDTH - 40 - black_time_text.get_width(), HEIGHT - SQUARE_SIZE / 2
+                                               - black_time_text.get_height() / 2))
+
+        if self.turn == 'White':
+            turn_text = TURN_FONT.render(f"{self.turn}'s turn to play", True, NAVY)
+            self.window.blit(turn_text, (WIDTH / 2 - turn_text.get_width() / 2,
+                                         HEIGHT - SQUARE_SIZE / 2 - turn_text.get_height() / 2))
+
+        else:
+            turn_text = TURN_FONT.render(f"{self.turn}'s turn to play", True, SCARLET)
+            self.window.blit(turn_text, (WIDTH / 2 - turn_text.get_width() / 2,
+                                         HEIGHT - SQUARE_SIZE / 2 - turn_text.get_height() / 2))
+
+    @staticmethod
+    def get_row_col_from_mouse_position():
+        # method to determined which square the player has clicked on
+
+        x, y = pygame.mouse.get_pos()
+
+        row = int(y // SQUARE_SIZE)
+        column = int(x // SQUARE_SIZE)
+
+        return row, column
+
+    def get_piece_by_row_col(self, row, column):
+        for piece in self.pieces:
+            if piece.row == row and piece.column == column:
+                return piece
+
+    def get_piece_by_id(self, reference):
+        for piece in self.pieces:
+            if piece.id == reference:
+                return piece
+
+    def check_if_player_tries_to_castle(self, row, column):
+        # this method will checked if a player has selected his own piece to move to.
+        # this may be an attempt to to castle (exchange king and rook)
+
+        # a checked king cannot castle
+        if not self.checked_king:
+
+            selected_piece = self.get_piece_by_row_col(self.piece_selected[0], self.piece_selected[1])
+            potential_move = self.get_piece_by_row_col(row, column)
+
+            if potential_move:
+                # check if the black player has selected his king and rook
+                if selected_piece.id == 12 and potential_move.id == 8 and not selected_piece.moved \
+                        and not potential_move.moved:
+                    if self.white_castles(selected_piece, potential_move):
+                        self.piece_selected = None
+                        self.turn = 'Black'
+                        return True
+
+                # or check if the white player has selected his king and rook
+                elif selected_piece.id == 6 and potential_move.id == 2 and not selected_piece.moved \
+                        and not potential_move.moved:
+                    if self.black_castles(selected_piece, potential_move):
+                        self.piece_selected = None
+                        self.turn = 'White'
+                        return True
+
+        return False
+
+    def white_castles(self, king_piece, rook_piece):
+        # first handle castling on the left hand side
+        if rook_piece.column == 0 and self.gameboard.board[7][1] == 0 and self.gameboard.board[7][2] == 0 \
+                and self.gameboard.board[7][3] == 0 and self.gameboard.board[7][4] == 12:
+
+            # now check if the king would be in check in any of the spaces in between the castling event
+            # if so, castling is not possible
+
+            board_copy_one = deepcopy(self.gameboard.board)
+            board_copy_one[7][1] = 12
+            board_copy_one[7][4] = 0
+
+            board_copy_two = deepcopy(self.gameboard.board)
+            board_copy_two[7][2] = 12
+            board_copy_two[7][4] = 0
+
+            board_copy_three = deepcopy(self.gameboard.board)
+            board_copy_three[7][3] = 12
+            board_copy_three[7][4] = 0
+
+            # also check that after castling the king won't be in check
+
+            board_copy_four = deepcopy(self.gameboard.board)
+            board_copy_four[7][0] = 0
+            board_copy_four[7][1] = 0
+            board_copy_four[7][2] = 12
+            board_copy_four[7][3] = 8
+            board_copy_four[7][4] = 0
+
+            if not self.assess_if_white_king_is_currently_checked(board_copy_one) \
+                    and not self.assess_if_white_king_is_currently_checked(board_copy_two) \
+                    and not self.assess_if_white_king_is_currently_checked(board_copy_three) \
+                    and not self.assess_if_white_king_is_currently_checked(board_copy_four):
+                king_row, king_column = 7, 2
+                rook_row, rook_column = 7, 3
+
+                king_piece.move_piece(king_row, king_column)
+                rook_piece.move_piece(rook_row, rook_column)
+
+                self.gameboard.board[7][0], self.gameboard.board[7][1], self.gameboard.board[7][4] = 0, 0, 0
+                self.gameboard.board[7][2], self.gameboard.board[7][3] = 12, 8
+
+                return True
+
+        # now handle the right side
+
+        elif rook_piece.column == 7 and self.gameboard.board[7][6] == 0 and self.gameboard.board[7][5] == 0 \
+                and self.gameboard.board[7][4] == 12:
+
+            # now check if the king would be in check in any of the spaces in between the castling event
+
+            board_copy_one = deepcopy(self.gameboard.board)
+            board_copy_one[7][5] = 12
+            board_copy_one[7][4] = 0
+
+            board_copy_two = deepcopy(self.gameboard.board)
+            board_copy_two[7][6] = 12
+            board_copy_two[7][4] = 0
+
+            # also check that after castling the king won't be in check
+
+            board_copy_three = deepcopy(self.gameboard.board)
+            board_copy_three[7][4] = 0
+            board_copy_three[7][5] = 8
+            board_copy_three[7][6] = 12
+            board_copy_three[7][7] = 0
+
+            if not self.assess_if_white_king_is_currently_checked(board_copy_one) \
+                    and not self.assess_if_white_king_is_currently_checked(board_copy_two) \
+                    and not self.assess_if_white_king_is_currently_checked(board_copy_three):
+                king_row, king_column = 7, 6
+                rook_row, rook_column = 7, 5
+
+                king_piece.move_piece(king_row, king_column)
+                rook_piece.move_piece(rook_row, rook_column)
+
+                self.gameboard.board[7][7], self.gameboard.board[7][4] = 0, 0
+                self.gameboard.board[7][6], self.gameboard.board[7][5] = 12, 8
+
+                return True
+
+        return False
+
+    def black_castles(self, king_piece, rook_piece):
+        # first handle castling on the left hand side
+        if rook_piece.column == 0 and self.gameboard.board[0][1] == 0 and self.gameboard.board[0][2] == 0 \
+                and self.gameboard.board[0][3] == 0 and self.gameboard.board[0][4] == 6:
+
+            # now check if the king would be in check in any of the spaces in between the castling event
+            # if so, castling is not possible
+
+            board_copy_one = deepcopy(self.gameboard.board)
+            board_copy_one[0][1] = 6
+            board_copy_one[0][4] = 0
+
+            board_copy_two = deepcopy(self.gameboard.board)
+            board_copy_two[0][2] = 6
+            board_copy_two[0][4] = 0
+
+            board_copy_three = deepcopy(self.gameboard.board)
+            board_copy_three[0][3] = 6
+            board_copy_three[0][4] = 0
+
+            # also check that after castling the king won't be in check
+
+            board_copy_four = deepcopy(self.gameboard.board)
+            board_copy_four[0][0] = 0
+            board_copy_four[0][1] = 0
+            board_copy_four[0][2] = 6
+            board_copy_four[0][3] = 2
+            board_copy_four[0][4] = 0
+
+            if not self.assess_if_black_king_is_currently_checked(board_copy_one) \
+                    and not self.assess_if_black_king_is_currently_checked(board_copy_two) \
+                    and not self.assess_if_black_king_is_currently_checked(board_copy_three) \
+                    and not self.assess_if_black_king_is_currently_checked(board_copy_four):
+                king_row, king_column = 0, 2
+                rook_row, rook_column = 0, 3
+
+                king_piece.move_piece(king_row, king_column)
+                rook_piece.move_piece(rook_row, rook_column)
+
+                self.gameboard.board[0][0], self.gameboard.board[0][1], self.gameboard.board[0][4] = 0, 0, 0
+                self.gameboard.board[0][2], self.gameboard.board[0][3] = 6, 2
+
+                return True
+
+        # now handle the right side
+
+        elif rook_piece.column == 7 and self.gameboard.board[0][6] == 0 and self.gameboard.board[0][5] == 0 \
+                and self.gameboard.board[0][4] == 6:
+
+            # now check if the king would be in check in any of the spaces in between the castling event
+
+            board_copy_one = deepcopy(self.gameboard.board)
+            board_copy_one[0][5] = 6
+            board_copy_one[0][4] = 0
+
+            board_copy_two = deepcopy(self.gameboard.board)
+            board_copy_two[0][6] = 6
+            board_copy_two[0][4] = 0
+
+            # also check that after castling the king won't be in check
+
+            board_copy_three = deepcopy(self.gameboard.board)
+            board_copy_three[0][4] = 0
+            board_copy_three[0][5] = 2
+            board_copy_three[0][6] = 6
+            board_copy_three[0][7] = 0
+
+            if not self.assess_if_black_king_is_currently_checked(board_copy_one) \
+                    and not self.assess_if_black_king_is_currently_checked(board_copy_two) \
+                    and not self.assess_if_black_king_is_currently_checked(board_copy_three):
+                king_row, king_column = 0, 6
+                rook_row, rook_column = 0, 5
+
+                king_piece.move_piece(king_row, king_column)
+                rook_piece.move_piece(rook_row, rook_column)
+
+                self.gameboard.board[0][7], self.gameboard.board[0][4] = 0, 0
+                self.gameboard.board[0][6], self.gameboard.board[0][5] = 6, 2
+
+                return True
+
+        return False
+
+    def assess_if_black_king_is_currently_checked(self, board):
+
+        king_row = None
+        king_col = None
+
+        # locate the king's row and column in the simulated position on the board
+
+        for i, row in enumerate(board):
+            for j, column in enumerate(row):
+                if column == 6:
+                    king_row = i
+                    king_col = j
+                    break
+
+        # iterate through opponent Piece objects and find their valid moves based on the current board simulation
+
+        for opponent_piece in self.pieces:
+            if opponent_piece.colour == 'White':
+
+                valid_moves = opponent_piece.get_valid_moves(board)
+
+                # iterate through the valid moves - if they match the location of the white king, the king's
+                # current row and  column will be returned. Otherwise, None will be returned.
+
+                for move in valid_moves:
+                    if king_row == move[0] and king_col == move[1]:
+                        return king_row, king_col
+
+        return None
+
+    def assess_if_white_king_is_currently_checked(self, board):
+
+        king_row = None
+        king_col = None
+
+        # locate the king's row and column in the simulated position on the board
+
+        for i, row in enumerate(board):
+            for j, column in enumerate(row):
+                if column == 12:
+                    king_row = i
+                    king_col = j
+                    break
+
+        # iterate through opponent Piece objects and find their valid moves based on the current board simulation
+
+        for opponent_piece in self.pieces:
+            if opponent_piece.colour == 'Black':
+
+                valid_moves = opponent_piece.get_valid_moves(board)
+
+                # iterate through the valid moves - if they match the location of the white king, the king's
+                # current row and  column will be returned. Otherwise, None will be returned.
+
+                for move in valid_moves:
+                    if king_row == move[0] and king_col == move[1]:
+                        return king_row, king_col
+
+        return None
+
+    def assess_if_black_king_will_be_checked_from_move(self, board, new_move):
+
+        king_row = None
+        king_col = None
+
+        # locate the king's row and column in the simulated position on the board
+
+        for i, row in enumerate(board):
+            for j, column in enumerate(row):
+                if column == 6:
+                    king_row = i
+                    king_col = j
+                    break
+
+        # iterate through opponent Piece objects and find their valid moves based on the current board simulation
+
+        for opponent_piece in self.pieces:
+            if opponent_piece.colour == 'White':
+
+                # check whether the opponent piece will be taken by the potential move
+                if not (opponent_piece.row == new_move[0] and opponent_piece.column == new_move[1]):
+                    valid_moves = opponent_piece.get_valid_moves(board)
+
+                    # iterate through the valid moves - if they match the location of the white king, the king's
+                    # current row and  column will be returned. Otherwise, None will be returned.
+
+                    for move in valid_moves:
+                        if king_row == move[0] and king_col == move[1]:
+                            return king_row, king_col
+
+        return None
+
+    def assess_if_white_king_will_be_checked_from_move(self, board, new_move):
+
+        king_row = None
+        king_col = None
+
+        # locate the king's row and column in the simulated position on the board
+
+        for i, row in enumerate(board):
+            for j, column in enumerate(row):
+                if column == 12:
+                    king_row = i
+                    king_col = j
+                    break
+
+        # iterate through opponent Piece objects and find their valid moves based on the current board simulation
+
+        for opponent_piece in self.pieces:
+            if opponent_piece.colour == 'Black':
+
+                # check whether the opponent piece will be taken by the potential move
+                if not (opponent_piece.row == new_move[0] and opponent_piece.column == new_move[1]):
+                    valid_moves = opponent_piece.get_valid_moves(board)
+
+                    # iterate through the valid moves - if they match the location of the white king, the king's
+                    # current row and  column will be returned. Otherwise, None will be returned.
+
+                    for move in valid_moves:
+                        if king_row == move[0] and king_col == move[1]:
+                            return king_row, king_col
+
+        return None
+
+    def check_if_black_king_checkmated(self):
+        # iterate through Black's remaining pieces
+        for piece in self.pieces:
+            if piece.colour == 'Black':
+                valid_moves = piece.get_valid_moves(self.gameboard.board)
+
+                # Iterate through the moves available for the piece - then create a board simulation for each move
+                # If the White king is not checked in any simulation return False (as it is not checkmate)
+
+                for move in valid_moves:
+                    board_copy = deepcopy(self.gameboard.board)
+
+                    # move the piece as per the simulation
+
+                    board_copy[piece.row][piece.column] = 0
+                    board_copy[move[0]][move[1]] = piece.id
+
+                    # check if the white king is in check in the current simulation. If not return False
+
+                    if not self.assess_if_black_king_is_currently_checked(board_copy):
+                        return False
+
+        return True
+
+    def check_if_white_king_checkmated(self):
+        # iterate through White's remaining pieces
+        for piece in self.pieces:
+            if piece.colour == 'White':
+                valid_moves = piece.get_valid_moves(self.gameboard.board)
+
+                # Iterate through the moves available for the piece - then create a board simulation for each move
+                # If the White king is not checked in any simulation return False (as it is not checkmate)
+
+                for move in valid_moves:
+                    board_copy = deepcopy(self.gameboard.board)
+
+                    # move the piece as per the simulation
+
+                    board_copy[piece.row][piece.column] = 0
+                    board_copy[move[0]][move[1]] = piece.id
+
+                    # check if the white king is in check in the current simulation. If not return False
+
+                    if not self.assess_if_white_king_is_currently_checked(board_copy):
+                        return False
+
+        return True
+
+    def check_if_not_checking_oneself(self, move, piece):
+        # make a copy of the playing board
+
+        current_row, current_col = piece.row, piece.column
+        new_row, new_column = move[0], move[1]
+
+        board_copy = deepcopy(self.gameboard.board)
+
+        board_copy[new_row][new_column] = piece.id
+        board_copy[current_row][current_col] = 0
+
+        if self.turn == 'White':
+            if self.assess_if_white_king_will_be_checked_from_move(board_copy, move):
+                return True
+
+        elif self.turn == 'Black':
+            if self.assess_if_black_king_will_be_checked_from_move(board_copy, move):
+                return True
+
+        return False
+
+    def select_piece_if_none_selected(self, row, column, player):
+        if player == 'White':
+            if self.gameboard.board[row][column] in range(7, 13):
+                potential_move = self.get_piece_by_row_col(row, column)
+
+                available_moves = potential_move.get_valid_moves(self.gameboard.board)
+
+                if len(available_moves) > 0:
+                    self.piece_selected = [potential_move.row, potential_move.column]
+
+        elif player == 'Black':
+            if self.gameboard.board[row][column] in range(1, 7):
+                potential_move = self.get_piece_by_row_col(row, column)
+
+                available_moves = potential_move.get_valid_moves(self.gameboard.board)
+
+                if len(available_moves) > 0:
+                    self.piece_selected = [potential_move.row, potential_move.column]
+
+    def select_alternative_piece(self, row, column, player):
+        if player == 'White':
+            if self.gameboard.board[row][column] in range(7, 13):
+                potential_move = self.get_piece_by_row_col(row, column)
+
+                available_moves = potential_move.get_valid_moves(self.gameboard.board)
+
+                if len(available_moves) > 0:
+                    self.piece_selected = [potential_move.row, potential_move.column]
+
+                    return available_moves
+
+        elif player == 'Black':
+            if self.gameboard.board[row][column] in range(1, 7):
+                potential_move = self.get_piece_by_row_col(row, column)
+
+                available_moves = potential_move.get_valid_moves(self.gameboard.board)
+
+                if len(available_moves) > 0:
+                    self.piece_selected = [potential_move.row, potential_move.column]
+
+                    return available_moves
+
+        return None
+
+    def select_location_and_move_piece(self, row, column, selected_piece, moves_available):
+
+        for move in moves_available:
+
+            if move[0] == row and move[1] == column:
+
+                if not self.check_if_not_checking_oneself(move, selected_piece):
+
+                    # change the piece in board array
+
+                    self.gameboard.board[selected_piece.row][selected_piece.column] = 0
+                    self.gameboard.board[row][column] = selected_piece.id
+
+                    # if a piece is taken, remove it from pieces
+
+                    if move[2]:
+                        self.remove_piece(row, column, selected_piece)
+
+                    # move the piece object in pieces
+
+                    selected_piece.move_piece(row, column)
+                    selected_piece.moved = True
+
+                    if selected_piece.id == 1 or selected_piece.id == 7:
+                        self.check_if_pawn_needs_to_be_queened(selected_piece)
+
+                    self.piece_selected = None
+                    self.change_turn()
+
+                    if self.turn == 'Black':
+                        if self.assess_if_black_king_is_currently_checked(self.gameboard.board) is not None:
+                            checked_row, checked_col = self.assess_if_black_king_is_currently_checked \
+                                (self.gameboard.board)
+                            self.checked_king = checked_row, checked_col
+
+                            # if the black king is check, assess for checkmate
+
+                            if self.check_if_black_king_checkmated():
+                                self.check_mated_king_location = checked_row, checked_col
+                                self.check_mated_king_colour = 'Black'
+
+                        else:
+                            self.checked_king = None
+
+                    elif self.turn == 'White':
+
+                        # first assess whether the White king has been checked by Black's move
+
+                        if self.assess_if_white_king_is_currently_checked(self.gameboard.board) is not None:
+                            checked_row, checked_col = self.assess_if_white_king_is_currently_checked \
+                                (self.gameboard.board)
+
+                            self.checked_king = checked_row, checked_col
+
+                            # if the White king is check, assess for checkmate
+
+                            if self.check_if_white_king_checkmated():
+                                self.check_mated_king_location = checked_row, checked_col
+                                self.check_mated_king_colour = 'White'
+
+                        else:
+                            self.checked_king = None
+
+    def check_if_pawn_needs_to_be_queened(self, selected_piece):
+
+        current_row, current_column = selected_piece.row, selected_piece.column
+
+        if selected_piece.colour == 'Black' and selected_piece.row == 7:
+
+            self.pieces.remove(selected_piece)
+
+            new_queen = Queen(current_row, current_column, 'Black', self.window)
+            self.pieces.append(new_queen)
+
+            self.gameboard.board[current_row][current_column] = 5
+
+        elif selected_piece.colour == 'White' and selected_piece.row == 0:
+
+            self.pieces.remove(selected_piece)
+
+            new_queen = Queen(current_row, current_column, 'White', self.window)
+            self.pieces.append(new_queen)
+
+            self.gameboard.board[current_row][current_column] = 11
+
+    def change_turn(self):
+        if self.turn == 'White':
+            self.turn = 'Black'
+        else:
+            self.turn = 'White'
+
+    def same_selected(self, row, column):
+        if self.turn == 'White' and self.gameboard.board[row][column] in range(7, 13):
+            return True
+
+        elif self.turn == 'Black' and self.gameboard.board[row][column] in range(1, 7):
+            return True
+
+        return False
+
+    def remove_piece(self, row, column, captor):
+        piece = self.get_piece_by_row_col(row, column)
+        self.pieces.remove(piece)
+        self.gameboard.board[row][column] = captor.id
+
+    def manage_timer(self):
+
+        if self.turn == 'White':
+            if self.white_timer_secs > 0:
+                self.white_timer_secs -= 1
+
+            elif self.white_timer_secs <= 0 and self.white_timer_mins > 0:
+                self.white_timer_secs = 59
+                self.white_timer_mins -= 1
+
+            elif self.white_timer_secs <= 0 and self.white_timer_mins <= 0:
+                self.out_of_time = 'White'
+
+        elif self.turn == 'Black':
+            if self.black_timer_secs > 0:
+                self.black_timer_secs -= 1
+
+            elif self.black_timer_secs <= 0 and self.black_timer_mins > 0:
+                self.black_timer_secs = 59
+                self.black_timer_mins -= 1
+
+            elif self.black_timer_secs <= 0 and self.black_timer_mins <= 0:
+                self.out_of_time = 'Black'
+
+    def display_winner(self):
+        if self.out_of_time == "White" or self.check_mated_king_colour == 'White':
+            win_text = WINNER_FONT.render("Black Wins", True, SCARLET)
+            self.window.blit(win_text, (WIDTH / 2 - win_text.get_width() / 2, HEIGHT / 2 + SQUARE_SIZE / 2
+                                        - win_text.get_height()))
+
+        elif self.out_of_time == "Black" or self.check_mated_king_colour == "Black":
+            win_text = WINNER_FONT.render("White Wins", True, SCARLET)
+            self.window.blit(win_text, (WIDTH / 2 - win_text.get_width() / 2, HEIGHT / 2 + SQUARE_SIZE / 2
+                                        - win_text.get_height()))
+
+        if self.out_of_time:
+            loser_text = LOSER_FONT.render(f"{self.out_of_time} is out of time", True, NAVY)
+
+            # draw a rectangle to cover up whose turn
+            pygame.draw.rect(self.window, CREAM, (WIDTH / 2 - loser_text.get_width() / 2 - 15,
+                                                  HEIGHT - SQUARE_SIZE / 2 - loser_text.get_height() / 2 - 5,
+                                                  loser_text.get_width() + 30, loser_text.get_height() + 10))
+
+            self.window.blit(loser_text, (WIDTH / 2 - loser_text.get_width() / 2,
+                                          HEIGHT - SQUARE_SIZE / 2 - loser_text.get_height() / 2 + 5))
+
+        elif self.check_mated_king_colour:
+            loser_text = LOSER_FONT.render(f"{self.check_mated_king_colour} is checkmated", True, NAVY)
+
+            # draw a rectangle to cover up whose turn
+            pygame.draw.rect(self.window, CREAM, (WIDTH / 2 - loser_text.get_width() / 2 - 15,
+                                                  HEIGHT - SQUARE_SIZE / 2 - loser_text.get_height() / 2 - 5,
+                                                  loser_text.get_width() + 30, loser_text.get_height() + 10))
+
+            self.window.blit(loser_text, (WIDTH / 2 - loser_text.get_width() / 2,
+                                          HEIGHT - SQUARE_SIZE / 2 - loser_text.get_height() / 2 + 5))
+
+    def handle_player_selection(self, row, column):
+
+        # first handle a situation where a previous piece has been selected and a move is selected
+
+        if self.piece_selected and not self.same_selected(row, column):
+            piece_chosen = self.get_piece_by_row_col(self.piece_selected[0], self.piece_selected[1])
+            moves = piece_chosen.get_valid_moves(self.gameboard.board)
+            self.select_location_and_move_piece(row, column, piece_chosen, moves)
+            return
+
+        if self.piece_selected is None:
+            self.select_piece_if_none_selected(row, column, self.turn)
+            return
+
+        if self.same_selected:
+            if self.check_if_player_tries_to_castle(row, column):
+                return
+
+        if self.same_selected:
+            self.select_piece_if_none_selected(row, column, self.turn)
+            return
+
+    def update_game(self):
+        if self.out_of_time or self.check_mate_registered:
+            self.display_winner()
+
+        else:
+            self.gameboard.draw_board()
+            self.gameboard.draw_bottom_display()
+
+            self.display_turn()
+
+            if self.checked_king:
+                pygame.draw.rect(self.window, PURPLE, (self.checked_king[1] * SQUARE_SIZE, self.checked_king[0]
+                                                       * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))
+
+            if self.check_mated_king_location:
+                pygame.draw.rect(self.window, LIGHT_RED, (self.checked_king[1] * SQUARE_SIZE, self.checked_king[0]
+                                                          * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))
+
+            if self.piece_selected is not None:
+                pygame.draw.rect(self.window, YELLOW, (self.piece_selected[1] * SQUARE_SIZE, self.piece_selected[0]
+                                                       * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))
+
+            # this code will allow update to run one more time after checkmate, in order to colour the square
+            if self.check_mated_king_location:
+                self.check_mate_registered = True
+
+            for piece in self.pieces:
+                piece.draw_piece()
+
+            if self.timer_countdown <= 0:
+                self.manage_timer()
+                self.timer_countdown = 275
+
+            else:
+                self.timer_countdown -= 1
