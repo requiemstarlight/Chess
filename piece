@@ -1,0 +1,857 @@
+from constants import *
+import pygame
+
+
+class Piece:
+    def __init__(self, row, column, colour, window):
+        self.row = row
+        self.column = column
+        self.colour = colour
+        self.window = window
+
+        # create variable to show if a piece has moved, to prevent illegal castling
+        self.moved = False
+
+        # images for piece to be imported as 'png'. One image will be allocated to each piece.
+        self.img = None
+
+        # this id will match its number in self.board (from Board class)
+        self.id = None
+
+    def move_piece(self, row, column):
+        # this method will 'move' the piece within the list of objects called 'pieces'
+
+        self.row = row
+        self.column = column
+
+    def draw_piece(self):
+        # this method will blit the piece image on the board, based on its row and column locations
+
+        self.window.blit(self.img, (self.column * SQUARE_SIZE + SQUARE_SIZE / 2 - self.img.get_width() / 2,
+                                    self.row * SQUARE_SIZE + SQUARE_SIZE / 2 - self.img.get_height() / 2))
+
+
+class Pawn(Piece):
+    def __init__(self, row, column, colour, window):
+        super().__init__(row, column, colour, window)
+
+        if self.colour == 'White':
+            self.id = 7
+        else:
+            self.id = 1
+
+        # import image
+        if self.colour == 'White':
+            self.img = white_pawn_scaled
+        else:
+            self.img = black_pawn_scaled
+
+    def get_valid_moves(self, board):
+        # create a method which returns a list of tuples, referring to all the possible moves currently available to the
+        # piece in its current location
+
+        valid_moves = []
+
+        if self.colour == 'Black':
+            if self.row + 1 in range(ROWS - 1):
+                if board[self.row + 1][self.column] == 0:
+                    # return a tuple with row and column of possible move and a boolean value as to whether an opponent
+                    # would be taken
+                    valid_moves.append((self.row + 1, self.column, False))
+
+            if not self.moved:
+                if board[self.row + 2][self.column] == 0 and board[self.row + 1][self.column] == 0:
+                    valid_moves.append((self.row+2, self.column, False))
+
+            if self.row + 1 in range(ROWS - 1) and self.column + 1 in range(COLUMNS):
+                if board[self.row + 1][self.column+1] in range(7, 13):
+                    valid_moves.append((self.row + 1, self.column + 1, True))
+
+            if self.row + 1 in range(ROWS - 1) and self.column - 1 in range(COLUMNS):
+                if board[self.row + 1][self.column - 1] in range(7, 13):
+                    valid_moves.append((self.row + 1, self.column - 1, True))
+
+        else:
+            if self.row - 1 in range(ROWS - 1):
+                if board[self.row - 1][self.column] == 0:
+                    # return a tuple with row and column of possible move and a boolean value as to whether an opponent
+                    # would be taken
+                    valid_moves.append((self.row - 1, self.column, False))
+
+            if not self.moved:
+                if board[self.row - 2][self.column] == 0 and board[self.row - 1][self.column] == 0:
+                    valid_moves.append((self.row - 2, self.column, False))
+
+            if self.row - 1 in range(ROWS - 1) and self.column + 1 in range(COLUMNS):
+                if board[self.row - 1][self.column + 1] in range(1, 7):
+                    valid_moves.append((self.row - 1, self.column + 1, True))
+
+            if self.row - 1 in range(ROWS - 1) and self.column - 1 in range(COLUMNS):
+                if board[self.row - 1][self.column - 1] in range(1, 7):
+                    valid_moves.append((self.row - 1, self.column - 1, True))
+
+        return valid_moves
+
+    def move_piece(self, row, column):
+        self.row = row
+        self.column = column
+
+        # A pawn can move one or two spaces on it first move and only one space every other time.
+        # This 'if' statement ensures that it can only move 2 spaces once
+
+        if not self.moved:
+            self.moved = True
+
+
+class Rook(Piece):
+    def __init__(self, row, column, colour, window):
+        super().__init__(row, column, colour, window)
+
+        if self.colour == 'White':
+            self.id = 8
+        else:
+            self.id = 2
+
+        # import image
+        if self.colour == 'White':
+            self.img = white_rook_scaled
+        else:
+            self.img = black_rook_scaled
+
+    def get_valid_moves(self, board):
+        # create a method which returns a list of tuples, referring to all the possible moves currently available to the
+        # piece in its current location
+
+        valid_moves = []
+
+        # check empty squares moving vertically downwards and append to Valid_Moves
+        for number in range(1, 9):
+            if self.row + number in range(ROWS - 1):
+                if board[self.row + number][self.column] == 0:
+                    valid_moves.append((self.row + number, self.column, False))
+
+            # handle a situation where the Rook encounters a black piece
+                elif board[self.row + number][self.column] in range(1, 7):
+                    if self.colour == 'Black':
+                        break
+
+                    elif self.colour == 'White':
+                        valid_moves.append((self.row + number, self.column, True))
+
+                # handle a situation where the Rook encounters a White piece
+                elif board[self.row + number][self.column] in range(7, 13):
+                    if self.colour == 'White':
+                        break
+
+                    elif self.colour == 'Black':
+                        valid_moves.append((self.row + number, self.column, True))
+
+        # check empty squares moving vertically downwards and append to Valid_Moves
+        for number in range(1, 9):
+            if self.row - number in range(ROWS - 1):
+                if board[self.row - number][self.column] == 0:
+                    valid_moves.append((self.row - number, self.column, False))
+
+                # handle a situation where the Rook encounters a black piece
+                elif board[self.row - number][self.column] in range(1, 7):
+                    if self.colour == 'Black':
+                        break
+
+                    elif self.colour == 'White':
+                        valid_moves.append((self.row - number, self.column, True))
+
+                # handle a situation where the Rook encounters a White piece
+                elif board[self.row - number][self.column] in range(7, 13):
+                    if self.colour == 'White':
+                        break
+
+                    elif self.colour == 'Black':
+                        valid_moves.append((self.row - number, self.column, True))
+
+        # check empty squares moving horizontally to the right and append to Valid_Moves
+        for number in range(1, 9):
+            if self.column + number in range(COLUMNS):
+                if board[self.row][self.column + number] == 0:
+                    valid_moves.append((self.row, self.column + number, False))
+
+                # handle a situation where the Rook encounters a black piece
+                elif board[self.row][self.column + number] in range(1, 7):
+                    if self.colour == 'Black':
+                        break
+
+                    elif self.colour == 'White':
+                        valid_moves.append((self.row, self.column + number, True))
+
+                # handle a situation where the Rook encounters a White piece
+                elif board[self.row][self.column + number] in range(7, 13):
+                    if self.colour == 'White':
+                        break
+
+                    elif self.colour == 'Black':
+                        valid_moves.append((self.row, self.column + number, True))
+
+        # check empty squares moving horizontally to the left and append to Valid_Moves
+        for number in range(1, 9):
+            if self.column - number in range(COLUMNS):
+                if board[self.row][self.column - number] == 0:
+                    valid_moves.append((self.row, self.column - number, False))
+
+                # handle a situation where the Rook encounters a black piece
+                elif board[self.row][self.column - number] in range(1, 7):
+                    if self.colour == 'Black':
+                        break
+
+                    elif self.colour == 'White':
+                        valid_moves.append((self.row, self.column - number, True))
+
+                # handle a situation where the Rook encounters a White piece
+                elif board[self.row][self.column - number] in range(7, 13):
+                    if self.colour == 'White':
+                        break
+
+                    elif self.colour == 'Black':
+                        valid_moves.append((self.row, self.column - number, True))
+
+        return valid_moves
+
+
+class Bishop(Piece):
+    def __init__(self, row, column, colour, window):
+        super().__init__(row, column, colour, window)
+
+        if self.colour == 'White':
+            self.id = 9
+        else:
+            self.id = 3
+
+        if self.colour == 'White':
+            self.img = white_bishop_scaled
+        else:
+            self.img = black_bishop_scaled
+
+    def get_valid_moves(self, board):
+        valid_moves = []
+
+        # check empty squares moving diagonally downwards to the right and append to Valid_Moves
+        for number in range(1, 9):
+            if self.row + number not in range(ROWS - 1) or self.column + number not in range(COLUMNS):
+                break
+            else:
+                if board[self.row + number][self.column + number] == 0:
+                    valid_moves.append((self.row + number, self.column + number, False))
+
+                # handle a situation where the Bishop encounters a black piece
+                elif board[self.row + number][self.column + number] in range(1, 7):
+                    if self.colour == 'Black':
+                        break
+
+                    elif self.colour == 'White':
+                        valid_moves.append((self.row + number, self.column + number, True))
+                        break
+
+                # handle a situation where the Bishop encounters a White piece
+                elif board[self.row + number][self.column + number] in range(7, 13):
+                    if self.colour == 'White':
+                        break
+
+                    elif self.colour == 'Black':
+                        valid_moves.append((self.row + number, self.column + number, True))
+                        break
+
+        # check empty squares moving diagonally downwards to the left and append to Valid_Moves
+        for number in range(1, 9):
+            if self.row + number not in range(ROWS - 1) or self.column - number not in range(COLUMNS):
+                break
+            else:
+                if board[self.row + number][self.column - number] == 0:
+                    valid_moves.append((self.row + number, self.column - number, False))
+
+                # handle a situation where the Bishop encounters a black piece
+                elif board[self.row + number][self.column - number] in range(1, 7):
+                    if self.colour == 'Black':
+                        break
+
+                    elif self.colour == 'White':
+                        valid_moves.append((self.row + number, self.column - number, True))
+                        break
+
+                # handle a situation where the Bishop encounters a White piece
+                elif board[self.row + number][self.column - number] in range(7, 13):
+                    if self.colour == 'White':
+                        break
+
+                    elif self.colour == 'Black':
+                        valid_moves.append((self.row + number, self.column - number, True))
+                        break
+
+        # check empty squares moving diagonally upwards to the right and append to Valid_Moves
+        for number in range(1, 9):
+            if self.row - number not in range(ROWS - 1) or self.column + number not in range(COLUMNS):
+                break
+            else:
+                if board[self.row - number][self.column + number] == 0:
+                    valid_moves.append((self.row - number, self.column + number, False))
+
+                # handle a situation where the Bishop encounters a black piece
+                elif board[self.row - number][self.column + number] in range(1, 7):
+                    if self.colour == 'Black':
+                        break
+
+                    elif self.colour == 'White':
+                        valid_moves.append((self.row - number, self.column + number, True))
+                        break
+
+                # handle a situation where the Bishop encounters a White piece
+                elif board[self.row - number][self.column + number] in range(7, 13):
+                    if self.colour == 'White':
+                        break
+
+                    elif self.colour == 'Black':
+                        valid_moves.append((self.row - number, self.column + number, True))
+                        break
+
+        # check empty squares moving diagonally upwards to the left and append to Valid_Moves
+        for number in range(1, 9):
+            if self.row - number not in range(ROWS - 1) or self.column - number not in range(COLUMNS):
+                break
+            else:
+                if board[self.row - number][self.column - number] == 0:
+                    valid_moves.append((self.row - number, self.column - number, False))
+
+                # handle a situation where the Bishop encounters a black piece
+                elif board[self.row - number][self.column - number] in range(1, 7):
+                    if self.colour == 'Black':
+                        break
+
+                    elif self.colour == 'White':
+                        valid_moves.append((self.row - number, self.column - number, True))
+                        break
+
+                # handle a situation where the Bishop encounters a White piece
+                elif board[self.row - number][self.column - number] in range(7, 13):
+                    if self.colour == 'White':
+                        break
+
+                    elif self.colour == 'Black':
+                        valid_moves.append((self.row - number, self.column - number, True))
+                        break
+
+        return valid_moves
+
+
+class Knight(Piece):
+    def __init__(self, row, column, colour, window):
+        super().__init__(row, column, colour, window)
+
+        # import image
+        if self.colour == 'White':
+            self.img = white_knight_scaled
+        else:
+            self.img = black_knight_scaled
+
+        if self.colour == 'White':
+            self.id = 10
+        else:
+            self.id = 4
+
+    def get_valid_moves(self, board):
+        # create a method which returns a list of tuples, referring to all the possible moves currently available to the
+        # piece in its current location
+
+        valid_moves = []
+
+        # check downwards and right
+        if self.row + 2 in range(ROWS - 1) and self.column + 1 in range(COLUMNS):
+            if board[self.row + 2][self.column + 1] == 0:
+                valid_moves.append((self.row + 2, self.column + 1, False))
+
+            # handle situation if a black piece is in the location
+            elif board[self.row + 2][self.column + 1] in range(0, 7):
+                if self.colour == 'White':
+                    valid_moves.append((self.row + 2, self.column + 1, True))
+
+            elif board[self.row + 2][self.column + 1] in range(7, 13):
+                if self.colour == 'Black':
+                    valid_moves.append((self.row + 2, self.column + 1, True))
+
+        # check downwards and left
+        if self.row + 2 in range(ROWS - 1) and self.column - 1 in range(COLUMNS):
+            if board[self.row + 2][self.column - 1] == 0:
+                valid_moves.append((self.row + 2, self.column - 1, False))
+
+            # handle situation if a black piece is in the location
+            elif board[self.row + 2][self.column - 1] in range(0, 7):
+                if self.colour == 'White':
+                    valid_moves.append((self.row + 2, self.column - 1, True))
+
+            # handle situation if a white piece is in the location
+            elif board[self.row + 2][self.column - 1] in range(7, 13):
+                if self.colour == 'Black':
+                    valid_moves.append((self.row + 2, self.column - 1, True))
+
+        # check downwards and right
+        if self.row + 1 in range(ROWS - 1) and self.column + 2 in range(COLUMNS):
+            if board[self.row + 1][self.column + 2] == 0:
+                valid_moves.append((self.row + 1, self.column + 2, False))
+
+            # handle situation if a black piece is in the location
+            elif board[self.row + 1][self.column + 2] in range(0, 7):
+                if self.colour == 'White':
+                    valid_moves.append((self.row + 1, self.column + 2, True))
+
+            elif board[self.row + 1][self.column + 2] in range(7, 13):
+                if self.colour == 'Black':
+                    valid_moves.append((self.row + 1, self.column + 2, True))
+
+        # check downwards and left
+        if self.row + 1 in range(ROWS - 1) and self.column - 2 in range(COLUMNS):
+            if board[self.row + 1][self.column - 2] == 0:
+                valid_moves.append((self.row + 1, self.column - 2, False))
+
+            # handle situation if a black piece is in the location
+            elif board[self.row + 1][self.column - 2] in range(0, 7):
+                if self.colour == 'White':
+                    valid_moves.append((self.row + 1, self.column - 2, True))
+
+            # handle situation if a white piece is in the location
+            elif board[self.row + 1][self.column - 2] in range(7, 13):
+                if self.colour == 'Black':
+                    valid_moves.append((self.row + 1, self.column - 2, True))
+
+        # check upwards and right
+        if self.row - 2 in range(ROWS - 1) and self.column + 1 in range(COLUMNS):
+            if board[self.row - 2][self.column + 1] == 0:
+                valid_moves.append((self.row - 2, self.column + 1, False))
+
+            # handle situation if a black piece is in the location
+            elif board[self.row - 2][self.column + 1] in range(0, 7):
+                if self.colour == 'White':
+                    valid_moves.append((self.row - 2, self.column + 1, True))
+
+            elif board[self.row - 2][self.column + 1] in range(7, 13):
+                if self.colour == 'Black':
+                    valid_moves.append((self.row - 2, self.column + 1, True))
+
+        # check downwards and left
+        if self.row - 2 in range(ROWS - 1) and self.column - 1 in range(COLUMNS):
+            if board[self.row - 2][self.column - 1] == 0:
+                valid_moves.append((self.row - 2, self.column - 1, False))
+
+            # handle situation if a black piece is in the location
+            elif board[self.row - 2][self.column - 1] in range(0, 7):
+                if self.colour == 'White':
+                    valid_moves.append((self.row - 2, self.column - 1, True))
+
+            # handle situation if a white piece is in the location
+            elif board[self.row - 2][self.column - 1] in range(7, 13):
+                if self.colour == 'Black':
+                    valid_moves.append((self.row - 2, self.column - 1, True))
+
+        # check downwards and right
+        if self.row - 1 in range(ROWS - 1) and self.column + 2 in range(COLUMNS):
+            if board[self.row - 1][self.column + 2] == 0:
+                valid_moves.append((self.row - 1, self.column + 2, False))
+
+            # handle situation if a black piece is in the location
+            elif board[self.row - 1][self.column + 2] in range(0, 7):
+                if self.colour == 'White':
+                    valid_moves.append((self.row - 1, self.column + 2, True))
+
+            elif board[self.row - 1][self.column + 2] in range(7, 13):
+                if self.colour == 'Black':
+                    valid_moves.append((self.row - 1, self.column + 2, True))
+
+        # check downwards and left
+        if self.row - 1 in range(ROWS - 1) and self.column - 2 in range(COLUMNS):
+            if board[self.row - 1][self.column - 2] == 0:
+                valid_moves.append((self.row - 1, self.column - 2, False))
+
+            # handle situation if a black piece is in the location
+            elif board[self.row - 1][self.column - 2] in range(0, 7):
+                if self.colour == 'White':
+                    valid_moves.append((self.row - 1, self.column - 2, True))
+
+            # handle situation if a white piece is in the location
+            elif board[self.row - 1][self.column - 2] in range(7, 13):
+                if self.colour == 'Black':
+                    valid_moves.append((self.row - 1, self.column - 2, True))
+
+        return valid_moves
+
+
+class Queen(Piece):
+    def __init__(self, row, column, colour, window):
+        super().__init__(row, column, colour, window)
+
+        # import image
+        if self.colour == 'White':
+            self.img = white_queen_scaled
+        else:
+            self.img = black_queen_scaled
+
+        if self.colour == 'White':
+            self.id = 11
+        else:
+            self.id = 5
+
+    def get_valid_moves(self, board):
+        # create a method which returns a list of tuples, referring to all the possible moves currently available to the
+        # piece in its current location
+
+        valid_moves = []
+
+        # check empty squares moving vertically downwards and append to Valid_Moves
+        for number in range(1, 9):
+            if self.row + number in range(ROWS - 1):
+                if board[self.row + number][self.column] == 0:
+                    valid_moves.append((self.row + number, self.column, False))
+
+                # handle a situation where the Rook encounters a black piece
+                elif board[self.row + number][self.column] in range(1, 7):
+                    if self.colour == 'Black':
+                        break
+
+                    elif self.colour == 'White':
+                        valid_moves.append((self.row + number, self.column, True))
+                        break
+
+                # handle a situation where the Rook encounters a White piece
+                elif board[self.row + number][self.column] in range(7, 13):
+                    if self.colour == 'White':
+                        break
+
+                    elif self.colour == 'Black':
+                        valid_moves.append((self.row + number, self.column, True))
+                        break
+
+        # check empty squares moving vertically downwards and append to Valid_Moves
+        for number in range(1, 9):
+            if self.row - number in range(ROWS - 1):
+                if board[self.row - number][self.column] == 0:
+                    valid_moves.append((self.row - number, self.column, False))
+
+                # handle a situation where the Rook encounters a black piece
+                elif board[self.row - number][self.column] in range(1, 7):
+                    if self.colour == 'Black':
+                        break
+
+                    elif self.colour == 'White':
+                        valid_moves.append((self.row - number, self.column, True))
+                        break
+
+                # handle a situation where the Rook encounters a White piece
+                elif board[self.row - number][self.column] in range(7, 13):
+                    if self.colour == 'White':
+                        break
+
+                    elif self.colour == 'Black':
+                        valid_moves.append((self.row - number, self.column, True))
+                        break
+
+        # check empty squares moving horizontally to the right and append to Valid_Moves
+        for number in range(1, 9):
+            if self.column + number in range(COLUMNS):
+                if board[self.row][self.column + number] == 0:
+                    valid_moves.append((self.row, self.column + number, False))
+
+                # handle a situation where the Rook encounters a black piece
+                elif board[self.row][self.column + number] in range(1, 7):
+                    if self.colour == 'Black':
+                        break
+
+                    elif self.colour == 'White':
+                        valid_moves.append((self.row, self.column + number, True))
+                        break
+
+                # handle a situation where the Rook encounters a White piece
+                elif board[self.row][self.column + number] in range(7, 13):
+                    if self.colour == 'White':
+                        break
+
+                    elif self.colour == 'Black':
+                        valid_moves.append((self.row, self.column + number, True))
+                        break
+
+        # check empty squares moving horizontally to the left and append to Valid_Moves
+        for number in range(1, 9):
+            if self.column - number in range(COLUMNS):
+                if board[self.row][self.column - number] == 0:
+                    valid_moves.append((self.row, self.column - number, False))
+
+                # handle a situation where the Rook encounters a black piece
+                elif board[self.row][self.column - number] in range(1, 7):
+                    if self.colour == 'Black':
+                        break
+
+                    elif self.colour == 'White':
+                        valid_moves.append((self.row, self.column - number, True))
+                        break
+
+                # handle a situation where the Rook encounters a White piece
+                elif board[self.row][self.column - number] in range(7, 13):
+                    if self.colour == 'White':
+                        break
+
+                    elif self.colour == 'Black':
+                        valid_moves.append((self.row, self.column - number, True))
+                        break
+
+        # check empty squares moving diagonally downwards to the right and append to Valid_Moves
+        for number in range(1, 9):
+            if self.row + number not in range(ROWS - 1) or self.column + number not in range(COLUMNS):
+                break
+            else:
+                if board[self.row + number][self.column + number] == 0:
+                    valid_moves.append((self.row + number, self.column + number, False))
+
+                # handle a situation where the Bishop encounters a black piece
+                elif board[self.row + number][self.column + number] in range(1, 7):
+                    if self.colour == 'Black':
+                        break
+
+                    elif self.colour == 'White':
+                        valid_moves.append((self.row + number, self.column + number, True))
+                        break
+
+                # handle a situation where the Bishop encounters a White piece
+                elif board[self.row + number][self.column + number] in range(7, 13):
+                    if self.colour == 'White':
+                        break
+
+                    elif self.colour == 'Black':
+                        valid_moves.append((self.row + number, self.column + number, True))
+                        break
+
+        # check empty squares moving diagonally downwards to the left and append to Valid_Moves
+        for number in range(1, 9):
+            if self.row + number not in range(ROWS - 1) or self.column - number not in range(COLUMNS):
+                break
+            else:
+                if board[self.row + number][self.column - number] == 0:
+                    valid_moves.append((self.row + number, self.column - number, False))
+
+                # handle a situation where the Bishop encounters a black piece
+                elif board[self.row + number][self.column - number] in range(1, 7):
+                    if self.colour == 'Black':
+                        break
+
+                    elif self.colour == 'White':
+                        valid_moves.append((self.row + number, self.column - number, True))
+                        break
+
+                # handle a situation where the Bishop encounters a White piece
+                elif board[self.row + number][self.column - number] in range(7, 13):
+                    if self.colour == 'White':
+                        break
+
+                    elif self.colour == 'Black':
+                        valid_moves.append((self.row + number, self.column - number, True))
+                        break
+
+        # check empty squares moving diagonally upwards to the right and append to Valid_Moves
+        for number in range(1, 9):
+            if self.row - number not in range(ROWS - 1) or self.column + number not in range(COLUMNS):
+                break
+            else:
+                if board[self.row - number][self.column + number] == 0:
+                    valid_moves.append((self.row - number, self.column + number, False))
+
+                # handle a situation where the Bishop encounters a black piece
+                elif board[self.row - number][self.column + number] in range(1, 7):
+                    if self.colour == 'Black':
+                        break
+
+                    elif self.colour == 'White':
+                        valid_moves.append((self.row - number, self.column + number, True))
+                        break
+
+                # handle a situation where the Bishop encounters a White piece
+                elif board[self.row - number][self.column + number] in range(7, 13):
+                    if self.colour == 'White':
+                        break
+
+                    elif self.colour == 'Black':
+                        valid_moves.append((self.row - number, self.column + number, True))
+                        break
+
+        # check empty squares moving diagonally upwards to the left and append to Valid_Moves
+        for number in range(1, 9):
+            if self.row - number not in range(ROWS - 1) or self.column - number not in range(COLUMNS):
+                break
+            else:
+                if board[self.row - number][self.column - number] == 0:
+                    valid_moves.append((self.row - number, self.column - number, False))
+
+                # handle a situation where the Bishop encounters a black piece
+                elif board[self.row - number][self.column - number] in range(1, 7):
+                    if self.colour == 'Black':
+                        break
+
+                    elif self.colour == 'White':
+                        valid_moves.append((self.row - number, self.column - number, True))
+                        break
+
+                # handle a situation where the Bishop encounters a White piece
+                elif board[self.row - number][self.column - number] in range(7, 13):
+                    if self.colour == 'White':
+                        break
+
+                    elif self.colour == 'Black':
+                        valid_moves.append((self.row - number, self.column - number, True))
+                        break
+
+        return valid_moves
+
+
+class King(Piece):
+    def __init__(self, row, column, colour, window):
+        super().__init__(row, column, colour, window)
+
+        # import image
+        if self.colour == 'White':
+            self.img = white_king_scaled
+        else:
+            self.img = black_king_scaled
+
+        if self.colour == 'White':
+            self.id = 12
+        else:
+            self.id = 6
+
+    def get_valid_moves(self, board):
+        # create a method which returns a list of tuples, referring to all the possible moves currently available to the
+        # piece in its current location
+
+        valid_moves = []
+
+        # check empty square moving vertically downwards and append to Valid_Moves
+        if self.row + 1 in range(ROWS - 1):
+            if board[self.row + 1][self.column] == 0:
+                valid_moves.append((self.row + 1, self.column, False))
+
+            # handle a situation where the King encounters a black piece
+            elif board[self.row + 1][self.column] in range(1, 7):
+                if self.colour == 'White':
+                    valid_moves.append((self.row + 1, self.column, True))
+
+            # handle a situation where the King encounters a White piece
+            elif board[self.row + 1][self.column] in range(7, 13):
+
+                if self.colour == 'Black':
+                    valid_moves.append((self.row + 1, self.column, True))
+
+        # check empty square moving vertically upwards and append to Valid_Moves
+        if self.row - 1 in range(ROWS - 1):
+            if board[self.row - 1][self.column] == 0:
+                valid_moves.append((self.row - 1, self.column, False))
+
+            # handle a situation where the King encounters a black piece
+            elif board[self.row - 1][self.column] in range(1, 7):
+                if self.colour == 'White':
+                    valid_moves.append((self.row - 1, self.column, True))
+
+            # handle a situation where the King encounters a White piece
+            elif board[self.row - 1][self.column] in range(7, 13):
+
+                if self.colour == 'Black':
+                    valid_moves.append((self.row - 1, self.column, True))
+
+        # check empty square moving left and append to Valid_Moves
+        if self.column - 1 in range(COLUMNS):
+            if board[self.row][self.column - 1] == 0:
+                valid_moves.append((self.row, self.column - 1, False))
+
+            # handle a situation where the King encounters a black piece
+            elif board[self.row][self.column - 1] in range(1, 7):
+                if self.colour == 'White':
+                    valid_moves.append((self.row, self.column - 1, True))
+
+            # handle a situation where the King encounters a White piece
+            elif board[self.row][self.column - 1] in range(7, 13):
+
+                if self.colour == 'Black':
+                    valid_moves.append((self.row, self.column - 1, True))
+
+        # check empty square moving right and append to Valid_Moves
+        if self.column + 1 in range(COLUMNS):
+            if board[self.row][self.column + 1] == 0:
+                valid_moves.append((self.row, self.column + 1, False))
+
+            # handle a situation where the King encounters a black piece
+            elif board[self.row][self.column + 1] in range(1, 7):
+                if self.colour == 'White':
+                    valid_moves.append((self.row, self.column + 1, True))
+
+            # handle a situation where the King encounters a White piece
+            elif board[self.row][self.column + 1] in range(7, 13):
+
+                if self.colour == 'Black':
+                    valid_moves.append((self.row, self.column + 1, True))
+
+        # check empty square moving diagonally up and left and append to Valid_Moves
+        if self.row - 1 in range(ROWS - 1) and self.column - 1 in range(COLUMNS):
+            if board[self.row - 1][self.column - 1] == 0:
+                valid_moves.append((self.row - 1, self.column - 1, False))
+
+            # handle a situation where the King encounters a black piece
+            elif board[self.row - 1][self.column - 1] in range(1, 7):
+                if self.colour == 'White':
+                    valid_moves.append((self.row - 1, self.column - 1, True))
+
+            # handle a situation where the King encounters a White piece
+            elif board[self.row - 1][self.column - 1] in range(7, 13):
+
+                if self.colour == 'Black':
+                    valid_moves.append((self.row - 1, self.column - 1, True))
+
+        # check empty square moving diagonally up and right and append to Valid_Moves
+        if self.row - 1 in range(ROWS - 1) and self.column + 1 in range(COLUMNS):
+            if board[self.row - 1][self.column + 1] == 0:
+                valid_moves.append((self.row - 1, self.column + 1, False))
+
+            # handle a situation where the King encounters a black piece
+            elif board[self.row - 1][self.column + 1] in range(1, 7):
+                if self.colour == 'White':
+                    valid_moves.append((self.row - 1, self.column + 1, True))
+
+            # handle a situation where the King encounters a White piece
+            elif board[self.row - 1][self.column + 1] in range(7, 13):
+
+                if self.colour == 'Black':
+                    valid_moves.append((self.row - 1, self.column + 1, True))
+
+        # check empty square moving diagonally down and left and append to Valid_Moves
+        if self.row + 1 in range(ROWS - 1) and self.column - 1 in range(COLUMNS):
+            if board[self.row + 1][self.column - 1] == 0:
+                valid_moves.append((self.row + 1, self.column - 1, False))
+
+            # handle a situation where the King encounters a black piece
+            elif board[self.row + 1][self.column - 1] in range(1, 7):
+                if self.colour == 'White':
+                    valid_moves.append((self.row + 1, self.column - 1, True))
+
+            # handle a situation where the King encounters a White piece
+            elif board[self.row + 1][self.column - 1] in range(7, 13):
+
+                if self.colour == 'Black':
+                    valid_moves.append((self.row + 1, self.column - 1, True))
+
+        # check empty square moving diagonally down and right and append to Valid_Moves
+        if self.row + 1 in range(ROWS - 1) and self.column + 1 in range(COLUMNS):
+            if board[self.row + 1][self.column + 1] == 0:
+                valid_moves.append((self.row + 1, self.column + 1, False))
+
+            # handle a situation where the King encounters a black piece
+            elif board[self.row + 1][self.column + 1] in range(1, 7):
+                if self.colour == 'White':
+                    valid_moves.append((self.row + 1, self.column + 1, True))
+
+            # handle a situation where the King encounters a White piece
+            elif board[self.row + 1][self.column + 1] in range(7, 13):
+
+                if self.colour == 'Black':
+                    valid_moves.append((self.row + 1, self.column + 1, True))
+
+        return valid_moves
+
+
