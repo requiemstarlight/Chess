@@ -1,0 +1,81 @@
+import pygame
+
+pygame.init()
+pygame.font.init()
+
+# board dimensions
+
+WIDTH = 600
+COLUMNS, ROWS = 8, 9
+SQUARE_SIZE = WIDTH / COLUMNS
+HEIGHT = round(WIDTH + SQUARE_SIZE)
+
+# create fonts
+
+TURN_FONT = pygame.font.SysFont('rockwell', 30)
+WINNER_FONT = pygame.font.SysFont('stencil', 80)
+LOSER_FONT = pygame.font.SysFont('gabriola', 42, False, True)
+TIMER_FONT = pygame.font.SysFont('gabriola', 35, False, True)
+PIECE_FONT = pygame.font.SysFont('comic sans', 20)
+
+# define colours
+
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+EGGSHELL = (234, 239, 250)
+GREY = (153, 153, 153)
+CREAM = (255, 255, 230)
+NAVY = (0, 0, 102)
+BROWN = (204, 153, 102)
+SCARLET = (189, 0, 0)
+LIGHT_BROWN = (236, 217, 198)
+YELLOW = (255, 230, 153)
+LIGHT_RED = (255, 153, 128)
+PURPLE = (193, 208, 240)
+
+# bottom display
+
+DISPLAY_GAP = 10
+
+# piece dimensions
+
+INNER_RADIUS = SQUARE_SIZE / 2 - 10
+OUTER_RADIUS = SQUARE_SIZE / 2 - 6
+
+# frames per second
+
+FPS = 60
+
+# player's timer
+
+WHITE_MIN_TIMER, WHITE_SECS_TIMER = 0, 0
+BLACK_MIN_TIMER, BLACK_SECS_TIMER = 0, 0
+
+
+# load images
+
+white_pawn = pygame.image.load('chess_images/white_pawn.png')
+black_pawn = pygame.image.load('chess_images/black_pawn.png')
+white_rook = pygame.image.load('chess_images/white_rook.png')
+black_rook = pygame.image.load('chess_images/black_rook.png')
+white_bishop = pygame.image.load('chess_images/white_bishop.png')
+black_bishop = pygame.image.load('chess_images/black_bishop.png')
+white_knight = pygame.image.load('chess_images/white_knight.png')
+black_knight = pygame.image.load('chess_images/black_knight.png')
+white_queen = pygame.image.load('chess_images/white_queen.png')
+black_queen = pygame.image.load('chess_images/black_queen.png')
+white_king = pygame.image.load('chess_images/white_king.png')
+black_king = pygame.image.load('chess_images/black_king.png')
+
+white_pawn_scaled = pygame.transform.scale(white_pawn, (round(0.8 * SQUARE_SIZE), round(0.8 * SQUARE_SIZE)))
+black_pawn_scaled = pygame.transform.scale(black_pawn, (round(0.8 * SQUARE_SIZE), round(0.8 * SQUARE_SIZE)))
+white_rook_scaled = pygame.transform.scale(white_rook, (round(0.8 * SQUARE_SIZE), round(0.8 * SQUARE_SIZE)))
+black_rook_scaled = pygame.transform.scale(black_rook, (round(0.8 * SQUARE_SIZE), round(0.8 * SQUARE_SIZE)))
+white_bishop_scaled = pygame.transform.scale(white_bishop, (round(0.8 * SQUARE_SIZE), round(0.8 * SQUARE_SIZE)))
+black_bishop_scaled = pygame.transform.scale(black_bishop, (round(0.8 * SQUARE_SIZE), round(0.8 * SQUARE_SIZE)))
+white_knight_scaled = pygame.transform.scale(white_knight, (round(0.8 * SQUARE_SIZE), round(0.8 * SQUARE_SIZE)))
+black_knight_scaled = pygame.transform.scale(black_knight, (round(0.8 * SQUARE_SIZE), round(0.8 * SQUARE_SIZE)))
+white_queen_scaled = pygame.transform.scale(white_queen, (round(0.8 * SQUARE_SIZE), round(0.8 * SQUARE_SIZE)))
+black_queen_scaled = pygame.transform.scale(black_queen, (round(0.8 * SQUARE_SIZE), round(0.8 * SQUARE_SIZE)))
+white_king_scaled = pygame.transform.scale(white_king, (round(0.8 * SQUARE_SIZE), round(0.8 * SQUARE_SIZE)))
+black_king_scaled = pygame.transform.scale(black_king, (round(0.8 * SQUARE_SIZE), round(0.8 * SQUARE_SIZE)))
